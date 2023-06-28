@@ -6,7 +6,7 @@ class Scalar:
         return obj if isinstance(obj, Scalar) else Scalar(obj)
 
     def __init__(self, val, op=None, children=(), childgrads=()):
-        self.val = val
+        self.val = float(val)
         self.op = op
         self.children = children
         self._childgrads = childgrads
@@ -43,6 +43,10 @@ class Scalar:
     def relu(self):
         d = 0 if self.val <= 0 else 1
         return Scalar(max(0, self.val), 'r', (self,), (d,))
+    
+    def sigmoid(self):
+        d = math.exp(-self.val) / (1 + math.exp(-self.val))**2
+        return Scalar(1 / (1 + math.exp(-self.val)), 'r', (self,), (d,))
     
     def __repr__(self):
         return str(self.val)

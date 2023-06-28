@@ -1,4 +1,5 @@
 import random
+import math
 
 from ahml.core import Scalar
 
@@ -12,19 +13,22 @@ class Module:
 
 class Neuron(Module):
     def __init__(self, ins):
-        self.W = [random.uniform(-1, 1) for _ in range(ins)]
-        self.b = 0
+        self.W = [Scalar(random.uniform(-1, 1)) for _ in range(ins)]
+        self.b = Scalar(0)
 
     def params(self):
         return self.W + [self.b]
     
-    def __call__(self, X):
+    def __call__(self, X, activate=True):
         dot = sum(w*x for w,x in zip(self.W, X)) + self.b
-        return dot.relu()
+        if activate:
+            return dot.relu()
+        return dot
     
 class Layer(Module):
-    def __init__(self, ins, size):
+    def __init__(self, ins, size, activate=True):
         self.neurons = []
+        self.activate = activate
         for _ in range(size):
             self.neurons.append(Neuron(ins))
     
@@ -34,7 +38,7 @@ class Layer(Module):
     def __call__(self, X):
         out = []
         for n in self.neurons:
-            out.append(n(X))
+            out.append(n(X, self.activate))
         return out
     
 class MLP(Module):
@@ -45,6 +49,7 @@ class MLP(Module):
         sizes = [ins] + hidden + [outs]
         for i in range(len(hidden) + 1):
             self.layers.append(Layer(sizes[i], sizes[i + 1]))
+        self.layers[-1].activate = False
     
     def params(self):
         return [p for l in self.layers for p in l.params()]
@@ -56,16 +61,16 @@ class MLP(Module):
     
     def update(self):
         for p in self.params():
-            p -= self.lr * p.grad
+            p.val -= self.lr * p.grad
 
-def mse_loss(out, expected):
+def mse_loss(out, target):
     loss = Scalar(0)
-    for x,y in zip(out, expected):
+    for x,y in zip(out, target):
         loss += (x - y)**2
     return loss
 
-def total_loss(Xs, Ys):
+def total_loss(outs, targets):
     loss = Scalar(0)
-    for X,Y in zip(Xs, Ys):
-        loss += mse_loss(X, Y)
-    return loss / len(Xs)
+    for out,target in zip(outs, targets):
+        loss += mse_loss(out, target)
+    return loss / len(outs)
